@@ -1,0 +1,55 @@
+{
+  "name": "agentcastkit",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Agent-first screen demo production for macOS, exposed through MCP.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/obaid/agentcastkit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/obaid/agentcastkit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/obaid/agentcastkit/issues"
+  },
+  "files": [
+    "assets/AgentCastKit-Runner-macOS-arm64.zip",
+    "dist/src/",
+    "LICENSE",
+    "README.md"
+  ],
+  "bin": {
+    "agentcastkit": "dist/src/cli.js",
+    "agentcastkit-mcp": "dist/src/server.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/server.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "native:build": "swift build --package-path native",
+    "native:app": "native/scripts/package-app.sh",
+    "native:notarize": "native/scripts/notarize-app.sh",
+    "native:release": "npm run native:app && npm run native:notarize",
+    "native:test": "swift test --package-path native",
+    "check": "npm run typecheck && npm test && npm run native:build && npm run build",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run check"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "version": "agentcastkit.demo-plan/v1",
+  "title": "Create a first project",
+  "objective": "Show a new customer how to create and name a project.",
+  "audience": "First-time users",
+  "targetDurationSeconds": 45,
+  "source": { "kind": "display" },
+  "driver": { "kind": "cdp" },
+  "privacy": {
+    "captureLiteralKeystrokes": false,
+    "redactNotifications": true,
+    "redactPasswordFields": true
+  },
+  "voiceover": {
+    "enabled": true,
+    "provider": "resemble",
+    "voiceRef": "product-demo-voice",
+    "postNarration": true
+  },
+  "steps": [
+    {
+      "id": "open_dashboard",
+      "title": "Open the dashboard",
+      "action": "navigate",
+      "url": "https://example.com/dashboard",
+      "narration": "Begin on the dashboard, where all of your projects live.",
+      "expected": "The project dashboard is visible."
+    },
+    {
+      "id": "create_project",
+      "title": "Create a project",
+      "action": "click",
+      "target": "button[data-testid='create-project']",
+      "narration": "Choose Create project to get started.",
+      "expected": "The new-project dialog is visible."
+    },
+    {
+      "id": "name_project",
+      "title": "Name the project",
+      "action": "type",
+      "target": "input[name='project-name']",
+      "value": "Customer onboarding",
+      "narration": "Give the project a recognizable name."
+    },
+    {
+      "id": "confirm_project",
+      "title": "Confirm creation",
+      "action": "click",
+      "target": "button[type='submit']",
+      "narration": "Then create it. Your workspace is ready immediately.",
+      "expected": "The new project workspace is visible."
+    }
+  ]
+}
