@@ -17,7 +17,7 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
     env: { ...getDefaultEnvironment(), AGENTCASTKIT_DATA_DIR: dataDirectory },
     stderr: "pipe",
   });
-  const client = new Client({ name: "agentcastkit-test", version: "0.2.0" });
+  const client = new Client({ name: "agentcastkit-test", version: "0.3.0" });
 
   try {
     await client.connect(transport);
@@ -26,6 +26,7 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
       tools.tools.map((tool) => tool.name),
       [
         "recorder_describe",
+        "product_features",
         "permissions_status",
         "permissions_request",
         "sources_list",
@@ -40,6 +41,12 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
 
     const description = await client.callTool({ name: "recorder_describe", arguments: {} });
     assert.equal((description.structuredContent as { product: string }).product, "AgentCastKit");
+
+    const features = await client.callTool({ name: "product_features", arguments: {} });
+    const policy = features.structuredContent as { free: Array<{ feature: string }>; paid: Array<{ feature: string }> };
+    assert.ok(policy.free.some((feature) => feature.feature === "capture.local"));
+    assert.ok(policy.free.some((feature) => feature.feature === "automation.cua"));
+    assert.ok(policy.paid.some((feature) => feature.feature === "voices.clone"));
 
     const planValidation = await client.callTool({
       name: "plan_validate",
@@ -59,7 +66,8 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
     assert.equal((planValidation.structuredContent as { valid: boolean }).valid, true);
 
     const resources = await client.listResources();
-    assert.equal(resources.resources[0]?.uri, "agentcastkit://recorder/capabilities");
+    assert.ok(resources.resources.some((resource) => resource.uri === "agentcastkit://recorder/capabilities"));
+    assert.ok(resources.resources.some((resource) => resource.uri === "agentcastkit://product/feature-policy"));
     const capability = await client.readResource({ uri: "agentcastkit://recorder/capabilities" });
     const firstContent = capability.contents[0];
     assert.ok(firstContent && "text" in firstContent);

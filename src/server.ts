@@ -14,6 +14,7 @@ import {
   type PermissionStatus,
 } from "./native-client.js";
 import { validatePlan } from "./protocol.js";
+import { productPolicy } from "./product-policy.js";
 
 const store = new JobStore();
 await store.initialize();
@@ -23,7 +24,7 @@ const captures = new CaptureRunner(store, native);
 
 const recorderDescription = {
   product: "AgentCastKit",
-  version: "0.2.0",
+  version: "0.3.0",
   platform: "macOS 15+",
   transport: "stdio",
   capabilities: [
@@ -32,20 +33,24 @@ const recorderDescription = {
     "display_or_window_capture",
     "durable_jobs",
     "demo_plan_validation",
+    "cua_driver_companion_mcp",
     "provider_neutral_voice_library",
     "managed_voiceover_synthesis",
   ],
   privacy: { literalKeystrokeCapture: false, secretsByReference: true, automaticUpload: false },
+  automation: { provider: "Cua Driver", version: "0.22.2", mcpServer: "cua-driver", installedBy: "npx agentcastkit install" },
+  featurePolicy: productPolicy,
   milestoneLimitations: [
     "The proof-of-life recorder writes one MP4; separate editable tracks come next.",
-    "Browser rehearsal, semantic action telemetry, editing, and final rendering are not implemented yet.",
+    "Cua Driver supplies GUI and browser control through a companion MCP; AgentCastKit does not yet persist semantic action telemetry.",
+    "Editing and final rendering are not implemented yet.",
     "Capture requires a logged-in macOS graphical session and Screen Recording permission.",
   ],
 };
 
 const server = new McpServer({
   name: "agentcastkit",
-  version: "0.2.0",
+  version: "0.3.0",
 });
 
 server.registerResource(
@@ -58,6 +63,19 @@ server.registerResource(
   },
   async (uri) => ({
     contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(recorderDescription, null, 2) }],
+  }),
+);
+
+server.registerResource(
+  "product-feature-policy",
+  "agentcastkit://product/feature-policy",
+  {
+    title: "AgentCastKit feature policy",
+    description: "Machine-readable free and paid product boundary.",
+    mimeType: "application/json",
+  },
+  async (uri) => ({
+    contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(productPolicy, null, 2) }],
   }),
 );
 
@@ -102,6 +120,17 @@ server.registerTool(
     annotations: { readOnlyHint: true, idempotentHint: true },
   },
   async () => result(recorderDescription),
+);
+
+server.registerTool(
+  "product_features",
+  {
+    title: "Describe free and paid features",
+    description: "Returns the stable AgentCastKit product boundary. Local capture and computer control remain free; managed cloud and collaboration features require entitlements.",
+    inputSchema: {},
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async () => result(productPolicy),
 );
 
 server.registerTool(
@@ -170,7 +199,7 @@ server.registerTool(
   "voice_library_list",
   {
     title: "List AgentCastKit voices",
-    description: "Lists provider-neutral AgentCastKit voice IDs and normalized marketplace metadata. Provider credentials and provider-specific IDs are never returned.",
+    description: "Paid feature. Lists provider-neutral AgentCastKit voice IDs and normalized marketplace metadata. Provider credentials and provider-specific IDs are never returned.",
     inputSchema: {
       scope: z.enum(["marketplace", "available"]).default("marketplace"),
       page: z.number().int().min(1).default(1),
@@ -223,7 +252,7 @@ server.registerTool(
   "voiceover_synthesize",
   {
     title: "Generate a managed voiceover",
-    description: "Generates a voiceover from plain text using an AgentCastKit voice ID, saves it locally, and returns timing plus artifact metadata.",
+    description: "Paid feature. Generates a voiceover from plain text using an AgentCastKit voice ID, saves it locally, and returns timing plus artifact metadata.",
     inputSchema: {
       voiceId: z.string().uuid(),
       text: z.string().min(1).max(3_000),

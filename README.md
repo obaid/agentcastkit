@@ -13,11 +13,14 @@ This repository is the first vertical slice. It can:
 - list recordable displays and windows;
 - validate a privacy-aware semantic demo plan;
 - start a bounded display/window recording and return a durable job ID;
+- install and configure a pinned Cua Driver companion so agents can drive native apps and browsers while capture continues;
+- install production-grade AgentCastKit and Cua Driver skills for detected Codex and Claude Code hosts;
+- expose a machine-readable free/paid feature policy;
 - query a provider-neutral marketplace voice library;
 - synthesize metered voiceovers through the activated AgentCastKit service without exposing cloud credentials;
 - persist job state atomically and reconcile interrupted work after restart.
 
-It does not yet drive a browser, capture editable separate tracks, edit a timeline, or render the final narrated demo. Those boundaries are intentionally explicit in `recorder_describe`.
+GUI and browser control run through Cua Driver's companion MCP. AgentCastKit does not yet persist semantic action telemetry, capture editable separate tracks, edit a timeline, or render the final narrated demo. Those boundaries are intentionally explicit in `recorder_describe`.
 
 This is the open-source local runtime. AgentCastKit's hosted activation, billing, protected orchestration recipes, licensed media, and provider integrations are maintained separately and are not part of this repository.
 
@@ -29,7 +32,7 @@ On an Apple silicon Mac running macOS 15 or newer:
 npx agentcastkit install
 ```
 
-The installer verifies the bundled notarized Runner, installs it to `~/Applications`, opens the permission and activation experience, and configures detected Codex and Claude Code clients with the local AgentCastKit MCP server. It never downloads or executes an unsigned application.
+The installer verifies the bundled notarized Runner, installs it to `~/Applications`, downloads the pinned and checksummed Cua Driver 0.22.2 release, opens both signed apps' permission experiences, installs advanced agent skills, and configures detected Codex and Claude Code clients with both MCP servers. Cua Driver telemetry is disabled by the AgentCastKit installer. Neither local recording nor computer control requires AgentCastKit activation.
 
 Useful follow-up commands:
 
@@ -53,7 +56,7 @@ After configuring a `notarytool` Keychain profile named `AgentCastKit`, produce 
 npm run native:release
 ```
 
-The runner checks and requests Screen Recording, microphone, and camera permissions; activates against the Laravel API while keeping the bearer token in Keychain; and copies a ready-to-paste MCP configuration for the bundled runtime. The same signed executable presents the GUI when opened normally and implements the native JSON protocol when an MCP host invokes it with command-line arguments. Its cloud broker performs only allow-listed AgentCastKit API operations, so neither the activation credential nor an underlying provider key appears in an MCP tool response.
+The runner checks and requests Screen Recording, microphone, and camera permissions; activates against the Laravel API while keeping the bearer token in Keychain; and copies a ready-to-paste MCP configuration for both runtimes. Cua Driver has its own stable signed app identity for Accessibility and Screen Recording permission. The same signed AgentCastKit executable presents the GUI when opened normally and implements the native JSON protocol when an MCP host invokes it with command-line arguments. Its cloud broker performs only allow-listed AgentCastKit API operations, so neither the activation credential nor an underlying provider key appears in an MCP tool response.
 
 ## Run it
 
@@ -84,7 +87,7 @@ For a development client configuration:
 }
 ```
 
-Call `permissions_status`, then `sources_list`. Call `voice_library_list` to discover every normalized marketplace voice, and pass one returned `voiceId` to `voiceover_synthesize`. Voice previews are opt-in so the default response stays compact. Permission prompts and recordings require explicit user confirmation. Captures default to:
+Call `recorder_describe`, `product_features`, `permissions_status`, and then `sources_list`. Rehearse the flow through the Cua Driver MCP before starting capture. Call `voice_library_list` only for an entitled account, then pass one returned `voiceId` to `voiceover_synthesize`. Voice previews are opt-in so the default response stays compact. Permission prompts and recordings require explicit user confirmation. Captures default to:
 
 `~/Library/Application Support/AgentCastKit/recordings/`
 
@@ -103,5 +106,7 @@ The example plan is in `examples/browser-demo-plan.json`. The architecture and n
 ## Open-source boundary
 
 Apache-2.0 covers the npm installer, MCP server and protocol, native macOS capture runner, documentation, and examples in this repository. It does not cover AgentCastKit cloud services, private prompts and production recipes, subscription systems, provider credentials, premium music, or hosted TTS/rendering services.
+
+The free local product includes recording, Cua Driver control, planning and validation, durable jobs, local artifacts, and future local editing/rendering. Paid services are managed TTS, premium or cloned voices, premium licensed music, brand kits, hosted video, and team collaboration. Local artifacts are never uploaded automatically.
 
 Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/obaid/agentcastkit/security/advisories/new), not a public issue.

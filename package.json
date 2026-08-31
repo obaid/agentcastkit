@@ -1,6 +1,6 @@
 {
   "name": "agentcastkit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Agent-first screen demo production for macOS, exposed through MCP.",
   "license": "Apache-2.0",
@@ -15,6 +15,7 @@
   "files": [
     "assets/AgentCastKit-Runner-macOS-arm64.zip",
     "dist/src/",
+    "skills/agentcastkit/",
     "LICENSE",
     "README.md"
   ],

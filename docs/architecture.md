@@ -20,7 +20,9 @@ Signed macOS capture worker
   TCC, ScreenCaptureKit, AVFoundation, clocks, local media
 ```
 
-Premium services cross a separate cloud boundary. A privately maintained cloud service owns activation, installation identity, rotating credentials, subscription entitlements, usage reservations, protected orchestration recipes, Resemble access, and licensed music delivery. Raw screen media remains local unless the user separately approves an upload.
+Premium services cross a separate cloud boundary. A privately maintained cloud service owns activation, installation identity, rotating credentials, subscription entitlements, usage reservations, protected orchestration recipes, managed TTS, premium or cloned voices, brand kits, hosted video, team collaboration, and licensed music delivery. Raw screen media remains local unless the user separately approves an upload. Recording, Cua Driver automation, planning, validation, durable jobs, and local artifacts do not require activation.
+
+GUI control is a companion MCP boundary. `npx agentcastkit install` pins and verifies Cua Driver, installs its stable signed `CuaDriver.app` identity, registers its MCP beside AgentCastKit, and installs a coordinating AgentCastKit skill. AgentCastKit owns capture jobs; Cua Driver owns snapshot-bound GUI action and verification. Those independent processes let control continue while a bounded recording job is active.
 
 ```text
 Agent / MCP host

@@ -25,7 +25,7 @@ private final class RunnerApplicationDelegate: NSObject, NSApplicationDelegate {
 
         let content = RunnerView()
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 780, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 700),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -33,7 +33,7 @@ private final class RunnerApplicationDelegate: NSObject, NSApplicationDelegate {
         window.title = "AgentCastKit Runner"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.minSize = NSSize(width: 700, height: 560)
+        window.minSize = NSSize(width: 720, height: 620)
         window.isReleasedWhenClosed = false
         window.contentViewController = NSHostingController(rootView: content)
         window.center()
@@ -84,6 +84,14 @@ private final class RunnerViewModel: ObservableObject {
     @Published var activationMessage = ""
     @Published var isActivating = false
     @Published var copiedConfiguration = false
+
+    var cuaDriverPath: String {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/AgentCastKit/bin/cua-driver")
+            .path
+    }
+
+    var automationReady: Bool { FileManager.default.isExecutableFile(atPath: cuaDriverPath) }
 
     var isActivated: Bool { KeychainStore.read(service: "com.agentcastkit.runner", account: "api-token") != nil }
 
@@ -152,7 +160,7 @@ private final class RunnerViewModel: ObservableObject {
                     deviceName: Host.current().localizedName ?? "Mac",
                     platform: "macos",
                     architecture: Self.architecture,
-                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0"
+                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
                 ))
 
                 let (data, response) = try await URLSession.shared.data(for: request)
@@ -166,7 +174,7 @@ private final class RunnerViewModel: ObservableObject {
                 try KeychainStore.save(Data(envelope.data.accessToken.utf8), service: "com.agentcastkit.runner", account: "api-token")
                 try KeychainStore.save(Data(envelope.data.installation.id.utf8), service: "com.agentcastkit.runner", account: "installation-id")
                 activationCode = ""
-                activationMessage = "Connected. Premium services are available to agents."
+                activationMessage = "Connected. Your account's managed-service entitlements are available to agents."
             } catch {
                 activationMessage = error.localizedDescription
             }
@@ -178,15 +186,17 @@ private final class RunnerViewModel: ObservableObject {
     func copyMCPConfiguration() {
         let executable = Bundle.main.executableURL?.path ?? ""
         let server = Bundle.main.resourceURL?.appendingPathComponent("mcp/dist/src/server.js").path ?? ""
-        let configuration: [String: Any] = [
-            "mcpServers": [
-                "agentcastkit": [
+        var servers: [String: Any] = [
+            "agentcastkit": [
                     "command": "/usr/bin/env",
                     "args": ["node", server],
                     "env": ["AGENTCASTKIT_CAPTURE_BIN": executable],
-                ],
-            ],
+                ]
         ]
+        if automationReady {
+            servers["cua-driver"] = ["command": cuaDriverPath, "args": ["mcp"]]
+        }
+        let configuration: [String: Any] = ["mcpServers": servers]
         guard let data = try? JSONSerialization.data(withJSONObject: configuration, options: [.prettyPrinted, .sortedKeys]),
               let text = String(data: data, encoding: .utf8) else { return }
         NSPasteboard.general.clearContents()
@@ -196,6 +206,14 @@ private final class RunnerViewModel: ObservableObject {
             try? await Task.sleep(for: .seconds(2))
             copiedConfiguration = false
         }
+    }
+
+    func openAutomationPermissions() {
+        guard automationReady else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: cuaDriverPath)
+        process.arguments = ["permissions", "grant"]
+        try? process.run()
     }
 
     private func openPrivacySettings(_ pane: String) {
@@ -266,7 +284,7 @@ private struct RunnerView: View {
                     .font(.system(size: 15))
             }
             Spacer()
-            Text("RUNNER  0.2")
+            Text("RUNNER  0.3")
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundStyle(.purple.opacity(0.9))
                 .padding(.horizontal, 12)
@@ -290,7 +308,7 @@ private struct RunnerView: View {
     }
 
     private var activationSection: some View {
-        section(title: "AgentCastKit services", subtitle: "One key unlocks managed voiceover, music, and future rendering services. Provider credentials stay on the server.") {
+        section(title: "Optional paid services", subtitle: "Activation covers managed TTS, premium or cloned voices, premium music, brand kits, hosted video, and teams. Local capture and computer control stay free.") {
             HStack(spacing: 10) {
                 TextField("Server URL", text: $model.serverURL)
                     .textFieldStyle(.roundedBorder)
@@ -314,8 +332,9 @@ private struct RunnerView: View {
     }
 
     private var agentSection: some View {
-        section(title: "Connect an agent", subtitle: "The app contains the MCP server and native capture runtime. Paste this configuration into Claude Code, Codex, or another MCP host.") {
-            HStack {
+        section(title: "Connect an agent", subtitle: "AgentCastKit records while the separately signed Cua Driver controls apps. The installer configures both MCPs and adds production guidance for Claude Code and Codex.") {
+            VStack(spacing: 11) {
+                HStack {
                 Label("Local MCP runtime installed", systemImage: "terminal.fill")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.green)
@@ -324,6 +343,22 @@ private struct RunnerView: View {
                     model.copyMCPConfiguration()
                 }
                 .buttonStyle(.bordered)
+                }
+                HStack {
+                    Label(
+                        model.automationReady ? "Cua Driver automation installed" : "Cua Driver automation not found",
+                        systemImage: model.automationReady ? "cursorarrow.motionlines" : "exclamationmark.triangle"
+                    )
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(model.automationReady ? .green : .orange)
+                    Spacer()
+                    if model.automationReady {
+                        Button("Automation permissions", systemImage: "hand.raised") {
+                            model.openAutomationPermissions()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
             }
         }
     }

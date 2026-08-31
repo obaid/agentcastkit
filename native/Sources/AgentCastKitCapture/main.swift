@@ -101,7 +101,7 @@ struct AgentCastKitCapture {
         }
         switch command {
         case "describe":
-            emit(Envelope.success(["name": "agentcastkit-capture", "version": "0.2.0", "platform": "macOS 15+"]))
+            emit(Envelope.success(["name": "agentcastkit-capture", "version": "0.3.0", "platform": "macOS 15+"]))
         case "permissions":
             try await permissions(Array(arguments.dropFirst()))
         case "sources":
