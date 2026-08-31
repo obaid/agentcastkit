@@ -5,6 +5,8 @@ import { randomUUID } from "node:crypto";
 import { basename, join } from "node:path";
 import { z } from "zod";
 import { CaptureRunner } from "./capture-runner.js";
+import { EditRunner } from "./edit-runner.js";
+import { EditProfiles, EditSegmentSchema } from "./editing.js";
 import { JobStore } from "./job-store.js";
 import {
   NativeClient,
@@ -21,10 +23,11 @@ await store.initialize();
 await store.reconcileInterrupted();
 const native = new NativeClient();
 const captures = new CaptureRunner(store, native);
+const edits = new EditRunner(store, native);
 
 const recorderDescription = {
   product: "AgentCastKit",
-  version: "0.3.0",
+  version: "0.4.0",
   platform: "macOS 15+",
   transport: "stdio",
   capabilities: [
@@ -36,21 +39,25 @@ const recorderDescription = {
     "cua_driver_companion_mcp",
     "provider_neutral_voice_library",
     "managed_voiceover_synthesis",
+    "artifact_inspection",
+    "visual_activity_analysis",
+    "non_destructive_edit_plans",
+    "local_mp4_rendering",
   ],
   privacy: { literalKeystrokeCapture: false, secretsByReference: true, automaticUpload: false },
   automation: { provider: "Cua Driver", version: "0.22.2", mcpServer: "cua-driver", installedBy: "npx agentcastkit install" },
   featurePolicy: productPolicy,
   milestoneLimitations: [
-    "The proof-of-life recorder writes one MP4; separate editable tracks come next.",
+    "Capture still writes one composite MP4; separate editable tracks are not available yet.",
     "Cua Driver supplies GUI and browser control through a companion MCP; AgentCastKit does not yet persist semantic action telemetry.",
-    "Editing and final rendering are not implemented yet.",
+    "0.4 editing uses conservative visual-activity analysis. It does not yet add zooms, captions, music, voiceover mixing, or audio-aware internal cuts.",
     "Capture requires a logged-in macOS graphical session and Screen Recording permission.",
   ],
 };
 
 const server = new McpServer({
   name: "agentcastkit",
-  version: "0.3.0",
+  version: "0.4.0",
 });
 
 server.registerResource(
@@ -100,6 +107,29 @@ server.registerResource(
         },
       ],
     };
+  },
+);
+
+server.registerResource(
+  "edit-plan",
+  new ResourceTemplate("agentcastkit://edits/{editJobId}", { list: undefined }),
+  {
+    title: "AgentCastKit edit plan",
+    description: "The current non-destructive edit decision list for a completed analysis job.",
+    mimeType: "application/json",
+  },
+  async (uri, variables) => {
+    const variable = variables.editJobId;
+    const editJobId = Array.isArray(variable) ? variable[0] : variable;
+    try {
+      return {
+        contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ plan: await edits.plan(editJobId ?? "") }, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify({ error: { code: "edit_not_ready", message: (error as Error).message } }, null, 2) }],
+      };
+    }
   },
 );
 
@@ -313,6 +343,103 @@ server.registerTool(
 );
 
 server.registerTool(
+  "artifact_inspect",
+  {
+    title: "Inspect a local video artifact",
+    description: "Reads duration, dimensions, frame rate, audio-track count, and file size for a completed capture or render job.",
+    inputSchema: { jobId: z.string().uuid() },
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async ({ jobId }) => {
+    try {
+      const response = await edits.inspect(jobId);
+      return result(response, !response.ok);
+    } catch (error) {
+      return result({ error: { code: "artifact_not_ready", message: (error as Error).message } }, true);
+    }
+  },
+);
+
+server.registerTool(
+  "edit_analyze",
+  {
+    title: "Analyze a take and propose edits",
+    description: "Starts conservative local visual-activity analysis and creates a durable, editable decision list. The raw MP4 is never changed.",
+    inputSchema: {
+      sourceJobId: z.string().uuid(),
+      profile: z.enum(EditProfiles).default("balanced"),
+      sampleFramesPerSecond: z.number().min(1).max(12).default(4),
+    },
+    annotations: { readOnlyHint: false, idempotentHint: false },
+  },
+  async (request) => {
+    try {
+      return result({ job: await edits.analyze(request), pollWith: "job_get" });
+    } catch (error) {
+      return result({ error: { code: "analysis_not_started", message: (error as Error).message } }, true);
+    }
+  },
+);
+
+server.registerTool(
+  "edit_plan_get",
+  {
+    title: "Get an edit plan",
+    description: "Returns the current non-destructive segment list, removed ranges, analysis confidence, and warnings.",
+    inputSchema: { editJobId: z.string().uuid() },
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async ({ editJobId }) => {
+    try {
+      return result({ plan: await edits.plan(editJobId) });
+    } catch (error) {
+      return result({ error: { code: "edit_not_ready", message: (error as Error).message } }, true);
+    }
+  },
+);
+
+server.registerTool(
+  "edit_plan_update",
+  {
+    title: "Update an edit plan",
+    description: "Replaces the ordered keep-list for a completed edit analysis. Segments may trim, cut, or speed up source ranges without changing the raw video.",
+    inputSchema: {
+      editJobId: z.string().uuid(),
+      segments: z.array(EditSegmentSchema).min(1).max(500),
+    },
+    annotations: { readOnlyHint: false, idempotentHint: true },
+  },
+  async ({ editJobId, segments }) => {
+    try {
+      const job = await edits.updatePlan(editJobId, segments);
+      return result({ job, plan: (job.result as { plan: unknown }).plan });
+    } catch (error) {
+      return result({ error: { code: "edit_plan_invalid", message: (error as Error).message } }, true);
+    }
+  },
+);
+
+server.registerTool(
+  "render_start",
+  {
+    title: "Render a local edit plan",
+    description: "Starts a durable local MP4 render from an edit plan. The raw source remains untouched and no artifact is uploaded.",
+    inputSchema: {
+      editJobId: z.string().uuid(),
+      filename: z.string().regex(/^[a-zA-Z0-9._-]+$/).optional(),
+    },
+    annotations: { readOnlyHint: false, idempotentHint: false },
+  },
+  async (request) => {
+    try {
+      return result({ job: await edits.render(request), pollWith: "job_get" });
+    } catch (error) {
+      return result({ error: { code: "render_not_started", message: (error as Error).message } }, true);
+    }
+  },
+);
+
+server.registerTool(
   "job_get",
   {
     title: "Get job status",
@@ -336,7 +463,9 @@ server.registerTool(
   },
   async ({ jobId }) => {
     try {
-      return result({ job: await captures.cancel(jobId) });
+      const job = await store.get(jobId);
+      if (!job) throw new Error(`Unknown job: ${jobId}`);
+      return result({ job: job.kind === "capture" ? await captures.cancel(jobId) : await edits.cancel(jobId) });
     } catch (error) {
       return result({ error: { code: "job_not_found", message: (error as Error).message } }, true);
     }

@@ -45,7 +45,7 @@ Provider credentials and provider-native voice identifiers terminate inside the 
 
 The capture worker never owns product planning or credentials. The coordinator never handles `CMSampleBuffer` objects. Browser drivers eventually emit semantic events onto the same monotonic clock as captured media.
 
-## Milestone 0 — implemented here
+## Milestone 0 — capture vertical slice
 
 - MCP stdio server
 - privacy-safe demo-plan schema
@@ -55,6 +55,18 @@ The capture worker never owns product planning or credentials. The coordinator n
 - bounded proof-of-life MP4 capture via `SCRecordingOutput`
 
 The proof-of-life file is deliberately not the final project format. `SCRecordingOutput` produces a convenient composite MP4 but cannot provide Prequel-style editable screen, microphone, system-audio, camera, cursor, and action tracks.
+
+## Version 0.4 — local post-production vertical slice
+
+- inspect a completed capture or render through AVFoundation;
+- sample low-resolution frame fingerprints and score visual activity locally;
+- generate a versioned, non-destructive edit plan with ordered keep segments, removed ranges, confidence, and warnings;
+- let an agent revise segments for trims, cuts, and playback-rate changes;
+- render the plan to a new MP4 with AVMutableComposition and AVAssetExportSession;
+- preserve raw captures and avoid output collisions by selecting a safe filename;
+- expose analysis and rendering as durable, cancellable MCP jobs.
+
+The analysis deliberately avoids aggressive internal cuts when the composite source contains audio. Visual activity alone cannot distinguish intentional narration pauses from dead air. Automatic zooms, captions, music, narration mixing, semantic action telemetry, and separate editable tracks remain later milestones.
 
 ## Milestone 1 — capture foundation
 
@@ -78,9 +90,9 @@ Exit criterion: a 30-minute recording survives coordinator restart, has synchron
 
 Exit criterion: the agent can rehearse a five-step browser workflow, explain exactly what it will record, and repair one failed step without restarting the whole run.
 
-## Milestone 3 — project, narration, and rendering
+## Milestone 3 — full project, narration, and deterministic rendering
 
-- immutable source takes plus a non-destructive source-time edit list;
+- promote the 0.4 source-time edit list into an editable multi-track project package;
 - declarative render plan shared by preview and export;
 - automatic zooms anchored to semantic target rectangles;
 - managed voice clips generated per scene after capture;

@@ -18,9 +18,12 @@ This repository is the first vertical slice. It can:
 - expose a machine-readable free/paid feature policy;
 - query a provider-neutral marketplace voice library;
 - synthesize metered voiceovers through the activated AgentCastKit service without exposing cloud credentials;
+- inspect completed video artifacts and analyze visual activity on device;
+- produce an editable, non-destructive keep-list that trims dead time while preserving the raw take;
+- render local MP4 edits as durable jobs, including ordered cuts and playback-rate changes;
 - persist job state atomically and reconcile interrupted work after restart.
 
-GUI and browser control run through Cua Driver's companion MCP. AgentCastKit does not yet persist semantic action telemetry, capture editable separate tracks, edit a timeline, or render the final narrated demo. Those boundaries are intentionally explicit in `recorder_describe`.
+GUI and browser control run through Cua Driver's companion MCP. AgentCastKit 0.4 includes a conservative visual-activity editor and local MP4 renderer. It does not yet persist semantic action telemetry, capture editable separate tracks, analyze speech, or add automatic zooms, captions, music, and narration mixing. Those boundaries are explicit in `recorder_describe`.
 
 This is the open-source local runtime. AgentCastKit's hosted activation, billing, protected orchestration recipes, licensed media, and provider integrations are maintained separately and are not part of this repository.
 
@@ -87,13 +90,17 @@ For a development client configuration:
 }
 ```
 
-Call `recorder_describe`, `product_features`, `permissions_status`, and then `sources_list`. Rehearse the flow through the Cua Driver MCP before starting capture. Call `voice_library_list` only for an entitled account, then pass one returned `voiceId` to `voiceover_synthesize`. Voice previews are opt-in so the default response stays compact. Permission prompts and recordings require explicit user confirmation. Captures default to:
+Call `recorder_describe`, `product_features`, `permissions_status`, and then `sources_list`. Rehearse the flow through the Cua Driver MCP before starting capture. After a completed take, call `artifact_inspect`, `edit_analyze`, `edit_plan_get`, and `render_start`; all post-production remains local and preserves the raw source. Call `voice_library_list` only for an entitled account, then pass one returned `voiceId` to `voiceover_synthesize`. Voice previews are opt-in so the default response stays compact. Permission prompts and recordings require explicit user confirmation. Captures default to:
 
 `~/Library/Application Support/AgentCastKit/recordings/`
 
 Voiceovers default to:
 
 `~/Library/Application Support/AgentCastKit/voiceovers/`
+
+Rendered edits default to:
+
+`~/Library/Application Support/AgentCastKit/renders/`
 
 ## Development
 
@@ -107,6 +114,6 @@ The example plan is in `examples/browser-demo-plan.json`. The architecture and n
 
 Apache-2.0 covers the npm installer, MCP server and protocol, native macOS capture runner, documentation, and examples in this repository. It does not cover AgentCastKit cloud services, private prompts and production recipes, subscription systems, provider credentials, premium music, or hosted TTS/rendering services.
 
-The free local product includes recording, Cua Driver control, planning and validation, durable jobs, local artifacts, and future local editing/rendering. Paid services are managed TTS, premium or cloned voices, premium licensed music, brand kits, hosted video, and team collaboration. Local artifacts are never uploaded automatically.
+The free local product includes recording, Cua Driver control, planning and validation, durable jobs, local artifacts, non-destructive editing, and MP4 rendering. Paid services are managed TTS, premium or cloned voices, premium licensed music, brand kits, hosted video, and team collaboration. Local artifacts are never uploaded automatically.
 
 Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities through [GitHub private vulnerability reporting](https://github.com/obaid/agentcastkit/security/advisories/new), not a public issue.

@@ -17,7 +17,7 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
     env: { ...getDefaultEnvironment(), AGENTCASTKIT_DATA_DIR: dataDirectory },
     stderr: "pipe",
   });
-  const client = new Client({ name: "agentcastkit-test", version: "0.3.0" });
+  const client = new Client({ name: "agentcastkit-test", version: "0.4.0" });
 
   try {
     await client.connect(transport);
@@ -34,6 +34,11 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
         "voice_library_list",
         "voiceover_synthesize",
         "capture_start",
+        "artifact_inspect",
+        "edit_analyze",
+        "edit_plan_get",
+        "edit_plan_update",
+        "render_start",
         "job_get",
         "job_cancel",
       ],
@@ -43,9 +48,10 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
     assert.equal((description.structuredContent as { product: string }).product, "AgentCastKit");
 
     const features = await client.callTool({ name: "product_features", arguments: {} });
-    const policy = features.structuredContent as { free: Array<{ feature: string }>; paid: Array<{ feature: string }> };
+    const policy = features.structuredContent as { free: Array<{ feature: string; status?: string }>; paid: Array<{ feature: string }> };
     assert.ok(policy.free.some((feature) => feature.feature === "capture.local"));
     assert.ok(policy.free.some((feature) => feature.feature === "automation.cua"));
+    assert.equal(policy.free.find((feature) => feature.feature === "editing.local")?.status, "available");
     assert.ok(policy.paid.some((feature) => feature.feature === "voices.clone"));
 
     const planValidation = await client.callTool({

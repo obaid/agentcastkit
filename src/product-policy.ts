@@ -1,12 +1,12 @@
 export const productPolicy = {
-  version: "2026-08-30",
+  version: "2026-08-31",
   principle: "The local production runtime is free. AgentCastKit charges for managed cloud services, licensed assets, and collaboration infrastructure.",
   free: [
     { feature: "capture.local", name: "Local screen and window recording", delivery: "local" },
     { feature: "automation.cua", name: "Cua Driver computer control", delivery: "local" },
     { feature: "planning.local", name: "Demo planning, rehearsal guidance, and validation", delivery: "local" },
     { feature: "jobs.local", name: "Durable local jobs and artifact storage", delivery: "local" },
-    { feature: "editing.local", name: "Local editing and rendering as those capabilities ship", delivery: "local", status: "roadmap" },
+    { feature: "editing.local", name: "Local non-destructive editing and MP4 rendering", delivery: "local", status: "available" },
   ],
   paid: [
     { feature: "tts.characters", name: "Managed text-to-speech", delivery: "cloud", status: "available" },

@@ -1,5 +1,5 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
-import { basename, join } from "node:path";
+import { availableArtifactPath } from "./artifact-path.js";
 import { JobStore, type JobRecord } from "./job-store.js";
 import { NativeClient, type NativeResponse } from "./native-client.js";
 
@@ -44,8 +44,12 @@ export class CaptureRunner {
       return;
     }
 
-    const safeName = basename(request.filename ?? `capture-${jobId}.mp4`).replace(/[^a-zA-Z0-9._-]/g, "-");
-    const outputPath = join(this.store.recordingsDirectory, safeName.endsWith(".mp4") ? safeName : `${safeName}.mp4`);
+    const outputPath = await availableArtifactPath(
+      this.store.recordingsDirectory,
+      request.filename ?? `capture-${jobId}.mp4`,
+      jobId,
+      ".mp4",
+    );
     const args = [
       "record",
       "--source",

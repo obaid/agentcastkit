@@ -97,21 +97,54 @@ struct AgentCastKitCapture {
 
     static func run(_ arguments: [String]) async throws {
         guard let command = arguments.first else {
-            throw Failure(code: "usage", message: "Expected describe, permissions, sources, record, or cloud.")
+            throw Failure(code: "usage", message: "Expected describe, permissions, sources, record, media, or cloud.")
         }
         switch command {
         case "describe":
-            emit(Envelope.success(["name": "agentcastkit-capture", "version": "0.3.0", "platform": "macOS 15+"]))
+            emit(Envelope.success(["name": "agentcastkit-capture", "version": "0.4.0", "platform": "macOS 15+"]))
         case "permissions":
             try await permissions(Array(arguments.dropFirst()))
         case "sources":
             try await sources(Array(arguments.dropFirst()))
         case "record":
             try await record(Array(arguments.dropFirst()))
+        case "media":
+            try await media(Array(arguments.dropFirst()))
         case "cloud":
             try await cloud(Array(arguments.dropFirst()))
         default:
             throw Failure(code: "usage", message: "Unknown command: \(command)")
+        }
+    }
+
+    static func media(_ arguments: [String]) async throws {
+        guard let command = arguments.first else {
+            throw Failure(code: "usage", message: "Expected media inspect, media analyze, or media render.")
+        }
+        let options = try parseOptions(Array(arguments.dropFirst()))
+        guard let input = options["input"] else {
+            throw Failure(code: "usage", message: "media \(command) requires --input.")
+        }
+        switch command {
+        case "inspect":
+            emit(Envelope.success(try await MediaEditing.inspect(path: input)))
+        case "analyze":
+            let sampleFPS = try doubleOption("sample-fps", options: options, default: 4, range: 0.25...8)
+            emit(Envelope.success(try await MediaEditing.analyze(path: input, requestedSampleFPS: sampleFPS)))
+        case "render":
+            guard let output = options["output"] else {
+                throw Failure(code: "usage", message: "media render requires --output.")
+            }
+            let inputData = FileHandle.standardInput.readDataToEndOfFile()
+            let request: NativeEditRequest
+            do {
+                request = try JSONDecoder().decode(NativeEditRequest.self, from: inputData)
+            } catch {
+                throw Failure(code: "usage", message: "media render expects a JSON edit plan on stdin.")
+            }
+            emit(Envelope.success(try await MediaEditing.render(inputPath: input, outputPath: output, request: request)))
+        default:
+            throw Failure(code: "usage", message: "Unknown media command: \(command)")
         }
     }
 

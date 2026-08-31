@@ -1,8 +1,8 @@
 ---
 name: agentcastkit
-description: Plan, rehearse, drive, record, and review polished product demos with the AgentCastKit recorder MCP and its Cua Driver companion MCP. Use when the user asks to record a screen, app, browser flow, walkthrough, tutorial, product demo, or narrated demo.
+description: Plan, rehearse, drive, record, post-edit, render, and review polished product demos with the AgentCastKit recorder MCP and its Cua Driver companion MCP. Use when the user asks to record a screen, app, browser flow, walkthrough, tutorial, product demo, or narrated demo.
 metadata:
-  agentcastkit-managed: "0.3.0"
+  agentcastkit-managed: "0.4.0"
 ---
 
 # AgentCastKit production workflow
@@ -52,7 +52,22 @@ Do not record during discovery or rehearsal. Do not turn on camera, microphone, 
 4. Keep external side effects within the user's authorization. Never repeat a purchase, send, publish, delete, or other irreversible step just to improve a take.
 5. Poll `job_get` until the recording completes. Cancel with `job_cancel` if the target becomes unsafe or the flow materially diverges.
 
-The capture and control MCPs are independent processes. A recording job can remain active while Cua Driver performs the interaction.
+The capture and control MCPs are independent processes. A recording job can remain active while Cua Driver performs the interaction. Requested filenames are suggestions: if one already exists, AgentCastKit preserves it and chooses a safe suffixed name for the new take.
+
+## Post-produce the take
+
+Treat post-production as the default continuation of a successful capture, not as a reason to make another take.
+
+1. Call `artifact_inspect` with the completed capture job ID.
+2. Call `edit_analyze` with the `balanced` profile, then poll its edit job with `job_get`.
+3. Call `edit_plan_get`. Review its keep segments, removed ranges, confidence, and warnings against the intended story.
+4. Use `edit_plan_update` only when the proposed ordered keep-list needs a specific correction. Segments can trim, cut, or change playback rate; the raw MP4 always remains untouched.
+5. Call `render_start`, poll the render job, then call `artifact_inspect` on the completed render.
+6. Review and return the rendered artifact as the primary result. Also retain the raw capture and edit job IDs so the work stays reversible.
+
+In 0.4, automatic analysis is based on visual activity. It conservatively preserves internal pauses when a source contains audio because speech-aware editing is not available yet. It does not add zooms, captions, music, narration mixing, or semantic action cuts. Do not claim those treatments occurred.
+
+Retake only when required content is missing, wrong, unsafe, obscured, or visually unusable. Fix ordinary dead time and pacing with the local edit plan. Never repeat an irreversible action for cosmetic improvement.
 
 ## Review before declaring success
 
@@ -65,7 +80,7 @@ Inspect the completed artifact and confirm:
 - no secrets, notifications, or unrelated content appeared;
 - every narrated claim is visibly supported.
 
-If a reversible local take is poor, explain the concrete defect and make at most one focused retake without asking again only when the original approval clearly covered it. Otherwise ask before repeating. Never claim editing, rendering, voice cloning, brand application, or hosting occurred when the current tools only captured an MP4.
+If the final render is still poor, explain the concrete defect. Make at most one focused retake without asking again only when the original approval clearly covered another recording; otherwise ask before repeating. Never claim voice cloning, brand application, or hosting occurred unless those tools actually completed.
 
 ## Paid services
 

@@ -160,7 +160,7 @@ private final class RunnerViewModel: ObservableObject {
                     deviceName: Host.current().localizedName ?? "Mac",
                     platform: "macos",
                     architecture: Self.architecture,
-                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0"
+                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0"
                 ))
 
                 let (data, response) = try await URLSession.shared.data(for: request)
@@ -284,7 +284,7 @@ private struct RunnerView: View {
                     .font(.system(size: 15))
             }
             Spacer()
-            Text("RUNNER  0.3")
+            Text("RUNNER  0.4")
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundStyle(.purple.opacity(0.9))
                 .padding(.horizontal, 12)
@@ -343,6 +343,15 @@ private struct RunnerView: View {
                     model.copyMCPConfiguration()
                 }
                 .buttonStyle(.bordered)
+                }
+                HStack {
+                    Label("Local editing + MP4 rendering available", systemImage: "wand.and.stars")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Text("FREE · ON DEVICE")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.secondary)
                 }
                 HStack {
                     Label(

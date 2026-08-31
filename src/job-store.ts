@@ -8,7 +8,7 @@ export type JobStatus = (typeof JobStatuses)[number];
 
 export interface JobRecord {
   id: string;
-  kind: "capture" | "rehearsal" | "workflow" | "render" | "voiceover";
+  kind: "capture" | "edit" | "rehearsal" | "workflow" | "render" | "voiceover";
   status: JobStatus;
   stage: string;
   progress: number;
@@ -24,12 +24,14 @@ export class JobStore {
   readonly jobsDirectory: string;
   readonly recordingsDirectory: string;
   readonly voiceoversDirectory: string;
+  readonly rendersDirectory: string;
 
   constructor(root = process.env.AGENTCASTKIT_DATA_DIR ?? join(homedir(), "Library", "Application Support", "AgentCastKit")) {
     this.root = root;
     this.jobsDirectory = join(root, "jobs");
     this.recordingsDirectory = join(root, "recordings");
     this.voiceoversDirectory = join(root, "voiceovers");
+    this.rendersDirectory = join(root, "renders");
   }
 
   async initialize(): Promise<void> {
@@ -37,6 +39,7 @@ export class JobStore {
       mkdir(this.jobsDirectory, { recursive: true, mode: 0o700 }),
       mkdir(this.recordingsDirectory, { recursive: true, mode: 0o700 }),
       mkdir(this.voiceoversDirectory, { recursive: true, mode: 0o700 }),
+      mkdir(this.rendersDirectory, { recursive: true, mode: 0o700 }),
     ]);
   }
 

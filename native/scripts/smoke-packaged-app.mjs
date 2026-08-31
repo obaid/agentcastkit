@@ -21,16 +21,18 @@ const transport = new StdioClientTransport({
   },
   stderr: "pipe",
 });
-const client = new Client({ name: "agentcastkit-packaging-test", version: "0.3.0" });
+const client = new Client({ name: "agentcastkit-packaging-test", version: "0.4.0" });
 
 try {
   await client.connect(transport);
   const tools = await client.listTools();
-  assert.equal(tools.tools.length, 11);
+  assert.equal(tools.tools.length, 16);
   assert.ok(tools.tools.some((tool) => tool.name === "capture_start"));
   assert.ok(tools.tools.some((tool) => tool.name === "voice_library_list"));
   assert.ok(tools.tools.some((tool) => tool.name === "voiceover_synthesize"));
   assert.ok(tools.tools.some((tool) => tool.name === "product_features"));
+  assert.ok(tools.tools.some((tool) => tool.name === "edit_analyze"));
+  assert.ok(tools.tools.some((tool) => tool.name === "render_start"));
 
   const description = await client.callTool({ name: "recorder_describe", arguments: {} });
   assert.equal(description.structuredContent?.product, "AgentCastKit");
