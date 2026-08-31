@@ -124,6 +124,10 @@ export class EditRunner {
       child.stdin.end(JSON.stringify({ segments: plan.segments }));
       this.processes.set(jobId, child);
       this.collect(jobId, child, "render_failed", async (artifact: RenderArtifact) => {
+        const removedSeconds = plan.removedRanges.reduce(
+          (total, range) => total + range.endSeconds - range.startSeconds,
+          0,
+        );
         await this.store.update(jobId, {
           status: "completed",
           stage: "rendered",
@@ -133,7 +137,8 @@ export class EditRunner {
             artifact: { uri: `file://${artifact.path}`, path: artifact.path, mimeType: "video/mp4", bytes: artifact.bytes },
             sourceDurationSeconds: plan.sourceDurationSeconds,
             durationSeconds: artifact.durationSeconds,
-            removedSeconds: Math.max(0, plan.sourceDurationSeconds - artifact.durationSeconds),
+            removedSeconds,
+            timeSavedSeconds: Math.max(0, plan.sourceDurationSeconds - artifact.durationSeconds),
             segmentCount: artifact.segmentCount,
           },
         });
@@ -151,13 +156,18 @@ export class EditRunner {
   ): void {
     let stdout = "";
     let stderr = "";
+    let settled = false;
     child.stdout.setEncoding("utf8").on("data", (chunk: string) => { stdout += chunk; });
     child.stderr.setEncoding("utf8").on("data", (chunk: string) => { stderr += chunk; });
     child.on("error", async (error) => {
+      if (settled) return;
+      settled = true;
       this.processes.delete(jobId);
       await this.fail(jobId, "native_spawn_failed", error);
     });
     child.on("close", async (code) => {
+      if (settled) return;
+      settled = true;
       this.processes.delete(jobId);
       const current = await this.store.get(jobId);
       if (!current || current.status === "cancelled") return;

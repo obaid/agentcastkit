@@ -160,7 +160,7 @@ private final class RunnerViewModel: ObservableObject {
                     deviceName: Host.current().localizedName ?? "Mac",
                     platform: "macos",
                     architecture: Self.architecture,
-                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.0"
+                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.1"
                 ))
 
                 let (data, response) = try await URLSession.shared.data(for: request)

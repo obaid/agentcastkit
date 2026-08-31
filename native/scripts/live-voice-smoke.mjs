@@ -21,7 +21,7 @@ const transport = new StdioClientTransport({
   },
   stderr: "pipe",
 });
-const client = new Client({ name: "agentcastkit-live-voice-test", version: "0.4.0" });
+const client = new Client({ name: "agentcastkit-live-voice-test", version: "0.4.1" });
 
 try {
   await client.connect(transport);

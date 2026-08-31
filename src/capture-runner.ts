@@ -71,10 +71,26 @@ export class CaptureRunner {
     this.processes.set(jobId, child);
     let stdout = "";
     let stderr = "";
+    let settled = false;
     child.stdout.setEncoding("utf8").on("data", (chunk: string) => (stdout += chunk));
     child.stderr.setEncoding("utf8").on("data", (chunk: string) => (stderr += chunk));
 
+    child.on("error", async (error) => {
+      if (settled) return;
+      settled = true;
+      this.processes.delete(jobId);
+      const current = await this.store.get(jobId);
+      if (!current || current.status === "cancelled") return;
+      await this.store.update(jobId, {
+        status: "failed",
+        stage: "capture_failed",
+        error: { code: "native_spawn_failed", message: error.message, retryable: true },
+      });
+    });
+
     child.on("close", async (code) => {
+      if (settled) return;
+      settled = true;
       this.processes.delete(jobId);
       const current = await this.store.get(jobId);
       if (!current || current.status === "cancelled") return;

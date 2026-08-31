@@ -6,10 +6,10 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 const APP_NAME = "AgentCastKit Runner.app";
 const ASSET_NAME = "AgentCastKit-Runner-macOS-arm64.zip";
-const ASSET_SHA256 = "5d594282da88467d8fd9b742b17f4cc2666e6db61ae239d5ec976e18bd0b187f";
+const ASSET_SHA256 = "aae5066b55cf721c2b08cefa4681640545bd054f61abc1416d705bac5051285b";
 const CUA_DRIVER_VERSION = "0.22.2";
 const CUA_INSTALLER_URL = `https://github.com/trycua/cua/releases/download/cua-driver-rs-v${CUA_DRIVER_VERSION}/_install-rust.sh`;
 const CUA_INSTALLER_SHA256 = "f7483c2d081ed836ba1f9cbad943037907f098cf1be45f37a94d7a2d21303940";
@@ -413,7 +413,7 @@ function mcpCommand(appPath: string): { nativeBinary: string; server: string } {
 
 function assertSupportedPlatform(): void {
   if (process.platform !== "darwin") throw new Error("AgentCastKit Runner currently requires macOS.");
-  if (process.arch !== "arm64") throw new Error("AgentCastKit 0.4.0 currently supports Apple silicon Macs (arm64).");
+  if (process.arch !== "arm64") throw new Error("AgentCastKit 0.4.1 currently supports Apple silicon Macs (arm64).");
   const major = Number(process.versions.node.split(".")[0]);
   if (major < 22) throw new Error("AgentCastKit requires Node.js 22 or newer.");
 }

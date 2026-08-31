@@ -27,7 +27,7 @@ const edits = new EditRunner(store, native);
 
 const recorderDescription = {
   product: "AgentCastKit",
-  version: "0.4.0",
+  version: "0.4.1",
   platform: "macOS 15+",
   transport: "stdio",
   capabilities: [
@@ -57,7 +57,7 @@ const recorderDescription = {
 
 const server = new McpServer({
   name: "agentcastkit",
-  version: "0.4.0",
+  version: "0.4.1",
 });
 
 server.registerResource(
@@ -368,7 +368,7 @@ server.registerTool(
     inputSchema: {
       sourceJobId: z.string().uuid(),
       profile: z.enum(EditProfiles).default("balanced"),
-      sampleFramesPerSecond: z.number().min(1).max(12).default(4),
+      sampleFramesPerSecond: z.number().min(1).max(8).default(4),
     },
     annotations: { readOnlyHint: false, idempotentHint: false },
   },

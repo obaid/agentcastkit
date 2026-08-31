@@ -2,7 +2,7 @@
 name: agentcastkit
 description: Plan, rehearse, drive, record, post-edit, render, and review polished product demos with the AgentCastKit recorder MCP and its Cua Driver companion MCP. Use when the user asks to record a screen, app, browser flow, walkthrough, tutorial, product demo, or narrated demo.
 metadata:
-  agentcastkit-managed: "0.4.0"
+  agentcastkit-managed: "0.4.1"
 ---
 
 # AgentCastKit production workflow
