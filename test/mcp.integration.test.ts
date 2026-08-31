@@ -17,7 +17,7 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
     env: { ...getDefaultEnvironment(), AGENTCASTKIT_DATA_DIR: dataDirectory },
     stderr: "pipe",
   });
-  const client = new Client({ name: "agentcastkit-test", version: "0.1.0" });
+  const client = new Client({ name: "agentcastkit-test", version: "0.2.0" });
 
   try {
     await client.connect(transport);
@@ -30,6 +30,8 @@ test("serves tools and resources over a real stdio MCP connection", async () => 
         "permissions_request",
         "sources_list",
         "plan_validate",
+        "voice_library_list",
+        "voiceover_synthesize",
         "capture_start",
         "job_get",
         "job_cancel",

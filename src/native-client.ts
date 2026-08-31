@@ -27,6 +27,40 @@ export interface CaptureSource {
   scale?: number;
 }
 
+export interface CloudVoice {
+  id: string;
+  name: string;
+  status: string;
+  default_language?: string;
+  supported_languages: string[];
+  source?: string;
+  preview_url?: string;
+  capabilities: Record<string, boolean>;
+}
+
+export interface CloudVoiceLibrary {
+  voices: CloudVoice[];
+  page: number;
+  pageSize: number;
+  total?: number;
+  pages?: number;
+  hasMore: boolean;
+}
+
+export interface CloudSpeechArtifact {
+  id: string;
+  path: string;
+  bytes: number;
+  voiceID: string;
+  characters: number;
+  outputFormat: "wav" | "mp3";
+  quality: "standard" | "high";
+  sampleRate?: number;
+  durationSeconds?: number;
+  timing: Array<{ value: string; startSeconds: number; endSeconds: number }>;
+  issues: string[];
+}
+
 const sourceDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(sourceDirectory, "..");
 
@@ -46,7 +80,7 @@ export class NativeClient {
     }
   }
 
-  async run<T>(args: string[]): Promise<NativeResponse<T>> {
+  async run<T>(args: string[], stdin?: string): Promise<NativeResponse<T>> {
     if (!(await this.available())) {
       return {
         ok: false,
@@ -58,7 +92,7 @@ export class NativeClient {
     }
 
     return new Promise((resolvePromise) => {
-      const child = spawn(this.binary, args, { stdio: ["ignore", "pipe", "pipe"] });
+      const child = spawn(this.binary, args, { stdio: ["pipe", "pipe", "pipe"] });
       let stdout = "";
       let stderr = "";
       child.stdout.setEncoding("utf8").on("data", (chunk: string) => (stdout += chunk));
@@ -79,6 +113,7 @@ export class NativeClient {
           });
         }
       });
+      child.stdin.end(stdin);
     });
   }
 

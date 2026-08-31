@@ -23,17 +23,20 @@ export class JobStore {
   readonly root: string;
   readonly jobsDirectory: string;
   readonly recordingsDirectory: string;
+  readonly voiceoversDirectory: string;
 
   constructor(root = process.env.AGENTCASTKIT_DATA_DIR ?? join(homedir(), "Library", "Application Support", "AgentCastKit")) {
     this.root = root;
     this.jobsDirectory = join(root, "jobs");
     this.recordingsDirectory = join(root, "recordings");
+    this.voiceoversDirectory = join(root, "voiceovers");
   }
 
   async initialize(): Promise<void> {
     await Promise.all([
       mkdir(this.jobsDirectory, { recursive: true, mode: 0o700 }),
       mkdir(this.recordingsDirectory, { recursive: true, mode: 0o700 }),
+      mkdir(this.voiceoversDirectory, { recursive: true, mode: 0o700 }),
     ]);
   }
 

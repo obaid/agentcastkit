@@ -6,10 +6,10 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const APP_NAME = "AgentCastKit Runner.app";
 const ASSET_NAME = "AgentCastKit-Runner-macOS-arm64.zip";
-const ASSET_SHA256 = "4a12bbf4b8490fc6a96d6b0165b0b215077e1268906cc3a88c75d9a855ba8149";
+const ASSET_SHA256 = "df665f4a2c7a099b5b4ddcad157f077a6c356561f0fc8185fc0d6a6cc04a03d3";
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 interface InstallOptions {
@@ -235,7 +235,7 @@ function mcpCommand(appPath: string): { nativeBinary: string; server: string } {
 
 function assertSupportedPlatform(): void {
   if (process.platform !== "darwin") throw new Error("AgentCastKit Runner currently requires macOS.");
-  if (process.arch !== "arm64") throw new Error("AgentCastKit 0.1.0 currently supports Apple silicon Macs (arm64).");
+  if (process.arch !== "arm64") throw new Error("AgentCastKit 0.2.0 currently supports Apple silicon Macs (arm64).");
   const major = Number(process.versions.node.split(".")[0]);
   if (major < 22) throw new Error("AgentCastKit requires Node.js 22 or newer.");
 }

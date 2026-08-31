@@ -12,5 +12,9 @@ let package = Package(
             name: "AgentCastKitCapture",
             swiftSettings: [.unsafeFlags(["-parse-as-library"])]
         ),
+        .testTarget(
+            name: "AgentCastKitCaptureTests",
+            dependencies: ["AgentCastKitCapture"]
+        ),
     ]
 )

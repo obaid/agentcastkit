@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { randomUUID } from "node:crypto";
+import { basename, join } from "node:path";
 import { z } from "zod";
 import { CaptureRunner } from "./capture-runner.js";
 import { JobStore } from "./job-store.js";
-import { NativeClient, type CaptureSource, type PermissionStatus } from "./native-client.js";
+import {
+  NativeClient,
+  type CaptureSource,
+  type CloudSpeechArtifact,
+  type CloudVoiceLibrary,
+  type PermissionStatus,
+} from "./native-client.js";
 import { validatePlan } from "./protocol.js";
 
 const store = new JobStore();
@@ -15,21 +23,29 @@ const captures = new CaptureRunner(store, native);
 
 const recorderDescription = {
   product: "AgentCastKit",
-  version: "0.1.0",
+  version: "0.2.0",
   platform: "macOS 15+",
   transport: "stdio",
-  capabilities: ["permission_status", "source_listing", "display_or_window_capture", "durable_jobs", "demo_plan_validation"],
+  capabilities: [
+    "permission_status",
+    "source_listing",
+    "display_or_window_capture",
+    "durable_jobs",
+    "demo_plan_validation",
+    "provider_neutral_voice_library",
+    "managed_voiceover_synthesis",
+  ],
   privacy: { literalKeystrokeCapture: false, secretsByReference: true, automaticUpload: false },
   milestoneLimitations: [
     "The proof-of-life recorder writes one MP4; separate editable tracks come next.",
-    "Browser rehearsal, semantic action telemetry, Resemble voiceover, editing, and rendering are not implemented yet.",
+    "Browser rehearsal, semantic action telemetry, editing, and final rendering are not implemented yet.",
     "Capture requires a logged-in macOS graphical session and Screen Recording permission.",
   ],
 };
 
 const server = new McpServer({
   name: "agentcastkit",
-  version: "0.1.0",
+  version: "0.2.0",
 });
 
 server.registerResource(
@@ -147,6 +163,104 @@ server.registerTool(
   async ({ plan }) => {
     const validation = validatePlan(plan);
     return result(validation, !validation.valid);
+  },
+);
+
+server.registerTool(
+  "voice_library_list",
+  {
+    title: "List AgentCastKit voices",
+    description: "Lists provider-neutral AgentCastKit voice IDs and normalized marketplace metadata. Provider credentials and provider-specific IDs are never returned.",
+    inputSchema: {
+      scope: z.enum(["marketplace", "available"]).default("marketplace"),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(10).max(1_000).default(1_000),
+      all: z.boolean().default(true).describe("Fetch every page beginning at page. Capped at 20 pages."),
+      includePreviews: z.boolean().default(false).describe("Include provider-hosted voice preview URLs. Disabled by default to keep agent context compact."),
+    },
+    annotations: { readOnlyHint: true, idempotentHint: true },
+  },
+  async ({ scope, page, pageSize, all, includePreviews }) => {
+    const voices: CloudVoiceLibrary["voices"] = [];
+    let currentPage = page;
+    let latest: CloudVoiceLibrary | undefined;
+
+    for (let fetched = 0; fetched < 20; fetched += 1) {
+      const response = await native.run<CloudVoiceLibrary>([
+        "cloud",
+        "voice-library",
+        "--scope",
+        scope,
+        "--page",
+        String(currentPage),
+        "--page-size",
+        String(pageSize),
+        "--include-previews",
+        String(includePreviews),
+      ]);
+      if (!response.ok || !response.data) return result(response, true);
+      latest = response.data;
+      voices.push(...response.data.voices);
+      if (!all || !response.data.hasMore) break;
+      currentPage += 1;
+    }
+
+    return result({
+      voices,
+      meta: {
+        firstPage: page,
+        lastPage: latest?.page ?? page,
+        pageSize,
+        returned: voices.length,
+        total: latest?.total,
+        complete: latest ? !latest.hasMore : true,
+      },
+    });
+  },
+);
+
+server.registerTool(
+  "voiceover_synthesize",
+  {
+    title: "Generate a managed voiceover",
+    description: "Generates a voiceover from plain text using an AgentCastKit voice ID, saves it locally, and returns timing plus artifact metadata.",
+    inputSchema: {
+      voiceId: z.string().uuid(),
+      text: z.string().min(1).max(3_000),
+      outputFormat: z.enum(["wav", "mp3"]).default("wav"),
+      quality: z.enum(["standard", "high"]).default("standard"),
+      filename: z.string().regex(/^[a-zA-Z0-9._-]+$/).optional(),
+      idempotencyKey: z.string().regex(/^[a-zA-Z0-9._:-]+$/).max(120).optional(),
+    },
+    annotations: { readOnlyHint: false, idempotentHint: true },
+  },
+  async ({ voiceId, text, outputFormat, quality, filename, idempotencyKey }) => {
+    const identifier = idempotencyKey ?? randomUUID();
+    const requestedName = basename(filename ?? `voiceover-${identifier}.${outputFormat}`).replace(/[^a-zA-Z0-9._-]/g, "-");
+    const safeName = requestedName.endsWith(`.${outputFormat}`) ? requestedName : `${requestedName}.${outputFormat}`;
+    const outputPath = join(store.voiceoversDirectory, safeName);
+    const response = await native.run<CloudSpeechArtifact>(
+      ["cloud", "synthesize", "--output", outputPath],
+      JSON.stringify({ voiceId, text, outputFormat, quality, idempotencyKey: identifier }),
+    );
+    if (!response.ok || !response.data) return result(response, true);
+
+    return result({
+      generationId: response.data.id,
+      voiceId: response.data.voiceID,
+      characters: response.data.characters,
+      quality: response.data.quality,
+      durationSeconds: response.data.durationSeconds,
+      sampleRate: response.data.sampleRate,
+      timing: response.data.timing,
+      issues: response.data.issues,
+      artifact: {
+        uri: `file://${response.data.path}`,
+        path: response.data.path,
+        mimeType: response.data.outputFormat === "mp3" ? "audio/mpeg" : "audio/wav",
+        bytes: response.data.bytes,
+      },
+    });
   },
 );
 

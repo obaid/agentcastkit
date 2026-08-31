@@ -13,9 +13,11 @@ This repository is the first vertical slice. It can:
 - list recordable displays and windows;
 - validate a privacy-aware semantic demo plan;
 - start a bounded display/window recording and return a durable job ID;
+- query a provider-neutral marketplace voice library;
+- synthesize metered voiceovers through the activated AgentCastKit service without exposing cloud credentials;
 - persist job state atomically and reconcile interrupted work after restart.
 
-It does not yet drive a browser, capture editable separate tracks, call Resemble, edit a timeline, or render the final narrated demo. Those boundaries are intentionally explicit in `recorder_describe`.
+It does not yet drive a browser, capture editable separate tracks, edit a timeline, or render the final narrated demo. Those boundaries are intentionally explicit in `recorder_describe`.
 
 This is the open-source local runtime. AgentCastKit's hosted activation, billing, protected orchestration recipes, licensed media, and provider integrations are maintained separately and are not part of this repository.
 
@@ -51,7 +53,7 @@ After configuring a `notarytool` Keychain profile named `AgentCastKit`, produce 
 npm run native:release
 ```
 
-The runner checks and requests Screen Recording, microphone, and camera permissions; activates against the Laravel API while keeping the bearer token in Keychain; and copies a ready-to-paste MCP configuration for the bundled runtime. The same signed executable presents the GUI when opened normally and implements the native JSON protocol when an MCP host invokes it with command-line arguments.
+The runner checks and requests Screen Recording, microphone, and camera permissions; activates against the Laravel API while keeping the bearer token in Keychain; and copies a ready-to-paste MCP configuration for the bundled runtime. The same signed executable presents the GUI when opened normally and implements the native JSON protocol when an MCP host invokes it with command-line arguments. Its cloud broker performs only allow-listed AgentCastKit API operations, so neither the activation credential nor an underlying provider key appears in an MCP tool response.
 
 ## Run it
 
@@ -82,9 +84,13 @@ For a development client configuration:
 }
 ```
 
-Call `permissions_status`, then `sources_list`. Permission prompts and recordings require explicit user confirmation. Captures default to:
+Call `permissions_status`, then `sources_list`. Call `voice_library_list` to discover every normalized marketplace voice, and pass one returned `voiceId` to `voiceover_synthesize`. Voice previews are opt-in so the default response stays compact. Permission prompts and recordings require explicit user confirmation. Captures default to:
 
 `~/Library/Application Support/AgentCastKit/recordings/`
+
+Voiceovers default to:
+
+`~/Library/Application Support/AgentCastKit/voiceovers/`
 
 ## Development
 

@@ -80,7 +80,7 @@ private final class RunnerViewModel: ObservableObject {
     @Published var microphone: PermissionState = .notDetermined
     @Published var camera: PermissionState = .notDetermined
     @Published var activationCode = ""
-    @Published var serverURL = UserDefaults.standard.string(forKey: "serverURL") ?? "http://127.0.0.1:8000"
+    @Published var serverURL = UserDefaults.standard.string(forKey: "serverURL") ?? "https://app.agentcastkit.com"
     @Published var activationMessage = ""
     @Published var isActivating = false
     @Published var copiedConfiguration = false
@@ -152,7 +152,7 @@ private final class RunnerViewModel: ObservableObject {
                     deviceName: Host.current().localizedName ?? "Mac",
                     platform: "macos",
                     architecture: Self.architecture,
-                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
+                    appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.2.0"
                 ))
 
                 let (data, response) = try await URLSession.shared.data(for: request)
@@ -266,7 +266,7 @@ private struct RunnerView: View {
                     .font(.system(size: 15))
             }
             Spacer()
-            Text("RUNNER  0.1")
+            Text("RUNNER  0.2")
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundStyle(.purple.opacity(0.9))
                 .padding(.horizontal, 12)
@@ -401,7 +401,7 @@ private struct ActivationError: LocalizedError {
     var errorDescription: String? { message }
 }
 
-private enum KeychainStore {
+enum KeychainStore {
     static func save(_ data: Data, service: String, account: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

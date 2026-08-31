@@ -22,6 +22,25 @@ Signed macOS capture worker
 
 Premium services cross a separate cloud boundary. A privately maintained cloud service owns activation, installation identity, rotating credentials, subscription entitlements, usage reservations, protected orchestration recipes, Resemble access, and licensed music delivery. Raw screen media remains local unless the user separately approves an upload.
 
+```text
+Agent / MCP host
+  | voice_library_list (stable AgentCastKit voiceId)
+  | voiceover_synthesize
+  v
+Signed Runner broker
+  | installation identity + activation token from Keychain
+  v
+Private Laravel API
+  | entitlement check -> usage reservation -> normalized catalog
+  v
+TextToSpeechProvider contract
+  | today: Resemble AI     tomorrow: any compatible provider
+  v
+Audio bytes return through Laravel and are written to a local artifact
+```
+
+Provider credentials and provider-native voice identifiers terminate inside the private backend. The MCP surface exposes normalized metadata and stable AgentCastKit voice IDs, so replacing or mixing providers does not change the agent contract. Preview URLs are opt-in to keep a full marketplace query from consuming unnecessary agent context.
+
 The capture worker never owns product planning or credentials. The coordinator never handles `CMSampleBuffer` objects. Browser drivers eventually emit semantic events onto the same monotonic clock as captured media.
 
 ## Milestone 0 — implemented here
@@ -62,7 +81,7 @@ Exit criterion: the agent can rehearse a five-step browser workflow, explain exa
 - immutable source takes plus a non-destructive source-time edit list;
 - declarative render plan shared by preview and export;
 - automatic zooms anchored to semantic target rectangles;
-- Resemble clips generated per scene after capture;
+- managed voice clips generated per scene after capture;
 - local speech-to-text word timing for captions and narration QA;
 - native Metal renderer and VideoToolbox encoder;
 - background music, ducking, cursor treatment, captions, and 16:9/9:16 reframing.
@@ -86,7 +105,7 @@ apps/review              optional local plan/review UI
 packages/protocol        plans, events, jobs, project schemas
 packages/coordinator     durable workflow state machine
 packages/driver-cdp      Playwright/CDP semantic driver
-packages/voice-resemble  scene-level TTS adapter
+packages/voice          provider-neutral scene-level TTS client
 native/capture           signed capture daemon
 native/render            Metal/VideoToolbox compositor
 ```

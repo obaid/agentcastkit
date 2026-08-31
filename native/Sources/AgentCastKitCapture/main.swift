@@ -97,19 +97,59 @@ struct AgentCastKitCapture {
 
     static func run(_ arguments: [String]) async throws {
         guard let command = arguments.first else {
-            throw Failure(code: "usage", message: "Expected describe, permissions, sources, or record.")
+            throw Failure(code: "usage", message: "Expected describe, permissions, sources, record, or cloud.")
         }
         switch command {
         case "describe":
-            emit(Envelope.success(["name": "agentcastkit-capture", "version": "0.1.0", "platform": "macOS 15+"]))
+            emit(Envelope.success(["name": "agentcastkit-capture", "version": "0.2.0", "platform": "macOS 15+"]))
         case "permissions":
             try await permissions(Array(arguments.dropFirst()))
         case "sources":
             try await sources(Array(arguments.dropFirst()))
         case "record":
             try await record(Array(arguments.dropFirst()))
+        case "cloud":
+            try await cloud(Array(arguments.dropFirst()))
         default:
             throw Failure(code: "usage", message: "Unknown command: \(command)")
+        }
+    }
+
+    static func cloud(_ arguments: [String]) async throws {
+        guard let command = arguments.first else {
+            throw Failure(code: "usage", message: "Expected cloud voice-library or cloud synthesize.")
+        }
+        let options = try parseOptions(Array(arguments.dropFirst()))
+
+        switch command {
+        case "voice-library":
+            let page = try integerOption("page", options: options, default: 1, range: 1...100_000)
+            let pageSize = try integerOption("page-size", options: options, default: 1_000, range: 10...1_000)
+            let scope = options["scope"] ?? "marketplace"
+            guard ["marketplace", "available"].contains(scope) else {
+                throw Failure(code: "usage", message: "--scope must be marketplace or available.")
+            }
+            let includePreviews = boolOption("include-previews", options: options, default: false)
+            emit(Envelope.success(try await CloudBroker.voices(
+                page: page,
+                pageSize: pageSize,
+                scope: scope,
+                includePreviews: includePreviews
+            )))
+        case "synthesize":
+            guard let output = options["output"] else {
+                throw Failure(code: "usage", message: "cloud synthesize requires --output.")
+            }
+            let inputData = FileHandle.standardInput.readDataToEndOfFile()
+            let input: CloudSynthesisInput
+            do {
+                input = try JSONDecoder().decode(CloudSynthesisInput.self, from: inputData)
+            } catch {
+                throw Failure(code: "usage", message: "cloud synthesize expects a JSON request on stdin.")
+            }
+            emit(Envelope.success(try await CloudBroker.synthesize(input: input, outputPath: output)))
+        default:
+            throw Failure(code: "usage", message: "Unknown cloud command: \(command)")
         }
     }
 
@@ -199,6 +239,7 @@ struct AgentCastKitCapture {
         let filter: SCContentFilter
         let width: Int
         let height: Int
+        var sourceRect: CGRect?
         if sourceID.hasPrefix("display:"), let rawID = UInt32(sourceID.dropFirst("display:".count)),
            let display = content.displays.first(where: { $0.displayID == rawID }) {
             filter = SCContentFilter(display: display, excludingWindows: [])
@@ -206,9 +247,15 @@ struct AgentCastKitCapture {
             height = display.height
         } else if sourceID.hasPrefix("window:"), let rawID = UInt32(sourceID.dropFirst("window:".count)),
                   let window = content.windows.first(where: { $0.windowID == rawID }) {
-            filter = SCContentFilter(desktopIndependentWindow: window)
-            width = Int(window.frame.width)
-            height = Int(window.frame.height)
+            guard let geometry = CaptureGeometry.window(window.frame, on: content.displays.map(\.frame)) else {
+                throw Failure(code: "window_not_on_display", message: "The selected window does not intersect a recordable display.")
+            }
+            let display = content.displays[geometry.displayIndex]
+            filter = SCContentFilter(display: display, including: [window])
+            sourceRect = geometry.sourceRect
+            let pixelScale = max(Double(filter.pointPixelScale), 1)
+            width = Int((geometry.sourceRect.width * pixelScale).rounded(.up))
+            height = Int((geometry.sourceRect.height * pixelScale).rounded(.up))
         } else {
             throw Failure(code: "source_not_found", message: "Source is no longer available: \(sourceID)")
         }
@@ -216,6 +263,10 @@ struct AgentCastKitCapture {
         let configuration = SCStreamConfiguration()
         configuration.width = even(width)
         configuration.height = even(height)
+        if let sourceRect {
+            configuration.sourceRect = sourceRect
+            configuration.scalesToFit = true
+        }
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(fps))
         configuration.queueDepth = 8
         configuration.showsCursor = cursor
@@ -276,6 +327,12 @@ struct AgentCastKitCapture {
 
     static func doubleOption(_ name: String, options: [String: String], default defaultValue: Double, range: ClosedRange<Double>) throws -> Double {
         let value = options[name].flatMap(Double.init) ?? defaultValue
+        guard range.contains(value) else { throw Failure(code: "usage", message: "--\(name) must be in \(range).") }
+        return value
+    }
+
+    static func integerOption(_ name: String, options: [String: String], default defaultValue: Int, range: ClosedRange<Int>) throws -> Int {
+        let value = options[name].flatMap(Int.init) ?? defaultValue
         guard range.contains(value) else { throw Failure(code: "usage", message: "--\(name) must be in \(range).") }
         return value
     }
